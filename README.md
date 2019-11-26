@@ -5,7 +5,8 @@
 
 Follow the instructions from the official tensorflow repository:
 
-```# Build the tools-helper image so you can run the assembler
+```
+# Build the tools-helper image so you can run the assembler
 $ docker build -t tf-tools -f tools.Dockerfile .
 
 # Next you can make a handy alias depending on what you're doing. When building
