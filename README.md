@@ -40,5 +40,5 @@ $ docker run --runtime=nvidia -u $(id -u):$(id -g) -v $(pwd):/tf/notebooks -p 88
 ```
 
 
-
+Jupyter uses its dark theme from the package called [jupyterthemes](https://github.com/dunovank/jupyter-themes).
 
