@@ -1,4 +1,4 @@
-# Dockerfiles with latest tensorflow version and gpu support
+# Dockerfiles with latest tensorflow version and gpu support with jupyter dark mode enabled by default
 
 This repository contains dockerfiles that build tensorflow using the methodology proposed in the official tensorflow repository, together with dark mode for jupyter notebook and some popular ML packages (pandas, matplotlib, scikit-learn). Graphviz and pydot packages are also installed since they are required for model visualization.
 
