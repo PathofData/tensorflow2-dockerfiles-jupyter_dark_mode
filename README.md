@@ -2,8 +2,15 @@
 
 This repository contains dockerfiles that build tensorflow using the methodology proposed in the official tensorflow repository, together with dark mode for jupyter notebook and some popular ML packages (pandas, matplotlib, scikit-learn). Graphviz and pydot packages are also installed since they are required for model visualization.
 
+#### Pulling the image from docker hub
+A pre built image using the tools found in this repository has been uploaded to docker hub. 
+One can pull it using the following command:
 
-### How to use this repository
+```
+$ docker pull pathofdata/tensorflow:2.0-gpu-py3-jupyter
+```
+
+#### Building the image locally
 
 Follow the instructions from the official tensorflow repository:
 
@@ -37,6 +44,12 @@ Run the image using the following code. More information on the [docker document
 
 ```
 $ docker run --runtime=nvidia -u $(id -u):$(id -g) -v $(pwd):/tf/notebooks -p 8888:8888 -it tensorflow:2.0-gpu-py3-jupyter
+```
+
+If your docker version is >= 19.03 then use the following command:
+
+```
+$ docker run --gpus all -u $(id -u):$(id -g) -v $(pwd):/tf/notebooks -p 8888:8888 -it tensorflow:2.0-gpu-py3-jupyter
 ```
 
 
