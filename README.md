@@ -7,7 +7,7 @@ A pre built image using the tools found in this repository has been uploaded to 
 One can pull it using the following command:
 
 ```
-docker pull pathofdata/tensorflow:2.0-gpu-py3-jupyter
+$ docker pull pathofdata/tensorflow:2.0-gpu-py3-jupyter
 ```
 
 #### Building the image locally
