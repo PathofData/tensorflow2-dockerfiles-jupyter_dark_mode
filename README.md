@@ -39,19 +39,21 @@ $ asm_images --release versioned --arg _TAG_PREFIX=2.0 --build_images --only_tag
 
 ### Running the image
 
-After building, the image tag will be `tensorflow:2.0-gpu-py3-jupyter`, or similar depending on your preference.
+After building, the image tag will be `tensorflow:2.0-gpu-py3-jupyter`, or similar depending on your preference. 
+If you have pulled the image its name will be `pathofdata/tensorflow:2.0-gpu-py3-jupyter`.
 Run the image using the following code. More information on the [docker documentation](https://docs.docker.com/engine/reference/run/):
 
 ```
-$ docker run --runtime=nvidia -u $(id -u):$(id -g) -v $(pwd):/tf/notebooks -p 8888:8888 -it tensorflow:2.0-gpu-py3-jupyter
+$ docker run --runtime=nvidia -v $(pwd):/tf/notebooks -p 8888:8888 -it tensorflow:2.0-gpu-py3-jupyter
 ```
 
-If your docker version is >= 19.03 then use the following command:
+If your docker version is >= 19.03 and you have nvidia-container-toolkit [installed](https://github.com/NVIDIA/nvidia-docker) then use the following command:
 
 ```
-$ docker run --gpus all -u $(id -u):$(id -g) -v $(pwd):/tf/notebooks -p 8888:8888 -it tensorflow:2.0-gpu-py3-jupyter
+$ docker run --gpus all -v $(pwd):/tf/notebooks -p 8888:8888 -it tensorflow:2.0-gpu-py3-jupyter
 ```
 
+Keep in mind that in order for the dark theme to apply (and every time you need to switch themes) you have to run the image as root by removing the `-u $(id -u):$(id -g)` arguments.
 
-Jupyter uses its dark theme from the package called [jupyterthemes](https://github.com/dunovank/jupyter-themes).
+Jupyter notebook uses its dark theme from the package called [jupyterthemes](https://github.com/dunovank/jupyter-themes).
 
