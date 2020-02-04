@@ -1,4 +1,5 @@
 ARG USE_PYTHON_3_NOT_2
+# TODO(angerson) Completely remove Python 2 support
 ARG _PY_SUFFIX=${USE_PYTHON_3_NOT_2:+3}
 ARG PYTHON=python${_PY_SUFFIX}
 ARG PIP=pip${_PY_SUFFIX}
@@ -13,8 +14,6 @@ RUN apt-get update && apt-get install -y \
 RUN ${PIP} --no-cache-dir install --upgrade \
     pip \
     setuptools
-
-RUN apt-get install -y git
 
 # Some TF tools expect a "python" binary
 RUN ln -s $(which ${PYTHON}) /usr/local/bin/python

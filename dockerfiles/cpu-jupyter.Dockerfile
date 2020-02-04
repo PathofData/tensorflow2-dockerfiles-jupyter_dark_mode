@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ FROM ubuntu:${UBUNTU_VERSION} as base
 RUN apt-get update && apt-get install -y curl
 
 ARG USE_PYTHON_3_NOT_2
+# TODO(angerson) Completely remove Python 2 support
 ARG _PY_SUFFIX=${USE_PYTHON_3_NOT_2:+3}
 ARG PYTHON=python${_PY_SUFFIX}
 ARG PIP=pip${_PY_SUFFIX}
@@ -41,8 +42,6 @@ RUN ${PIP} --no-cache-dir install --upgrade \
     pip \
     setuptools
 
-RUN apt-get install -y git
-
 # Some TF tools expect a "python" binary
 RUN ln -s $(which ${PYTHON}) /usr/local/bin/python
 
@@ -54,15 +53,15 @@ RUN ln -s $(which ${PYTHON}) /usr/local/bin/python
 # Set --build-arg TF_PACKAGE_VERSION=1.11.0rc0 to install a specific version.
 # Installs the latest version by default.
 ARG TF_PACKAGE=tensorflow
-ARG TF_PACKAGE_VERSION=2.0
+ARG TF_PACKAGE_VERSION=
 RUN ${PIP} install ${TF_PACKAGE}${TF_PACKAGE_VERSION:+==${TF_PACKAGE_VERSION}}
 
 COPY bashrc /etc/bash.bashrc
 RUN chmod a+rwx /etc/bash.bashrc
 
-RUN apt-get install -y graphviz
-RUN ${PIP} install jupyter matplotlib jupyterthemes pandas scikit-learn pydot
-RUN ${PIP} install git+https://www.github.com/keras-team/keras-contrib.git
+RUN ${PIP} install jupyter matplotlib
+# Pin ipykernel and nbformat; see https://github.com/ipython/ipykernel/issues/422
+RUN if [[ "${USE_PYTHON_3_NOT_2}" == "1" ]]; then ${PIP} install ipykernel==5.1.1 nbformat==4.4.0; fi
 RUN ${PIP} install jupyter_http_over_ws
 RUN jupyter serverextension enable --py jupyter_http_over_ws
 
@@ -76,13 +75,11 @@ RUN wget https://raw.githubusercontent.com/tensorflow/docs/master/site/en/tutori
 RUN wget https://raw.githubusercontent.com/tensorflow/docs/master/site/en/tutorials/keras/save_and_load.ipynb
 RUN wget https://raw.githubusercontent.com/tensorflow/docs/master/site/en/tutorials/keras/text_classification.ipynb
 RUN wget https://raw.githubusercontent.com/tensorflow/docs/master/site/en/tutorials/keras/text_classification_with_hub.ipynb
-
+COPY readme-for-jupyter.md README.md
 RUN apt-get autoremove -y && apt-get remove -y wget
 WORKDIR /tf
 EXPOSE 8888
 
 RUN ${PYTHON} -m ipykernel.kernelspec
-
-RUN jt -t onedork -fs 95 -tfs 11 -nfs 115 -cellw 88% -T
 
 CMD ["bash", "-c", "source /etc/bash.bashrc && jupyter notebook --notebook-dir=/tf --ip 0.0.0.0 --no-browser --allow-root"]

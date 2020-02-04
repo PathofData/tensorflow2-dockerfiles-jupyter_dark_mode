@@ -50,29 +50,63 @@ RUN ln -s $(which ${PYTHON}) /usr/local/bin/python
 #   tensorflow-gpu
 #   tf-nightly
 #   tf-nightly-gpu
+# Set --build-arg TF_PACKAGE_VERSION=1.11.0rc0 to install a specific version.
+# Installs the latest version by default.
 ARG TF_PACKAGE=tensorflow
-RUN apt-get update && apt-get install -y curl libhdf5-dev wget
-RUN ${PIP} install --global-option=build_ext \
-            --global-option=-I/usr/include/hdf5/serial/ \
-            --global-option=-L/usr/lib/powerpc64le-linux-gnu/hdf5/serial \
-            h5py
+ARG TF_PACKAGE_VERSION=
+RUN ${PIP} install ${TF_PACKAGE}${TF_PACKAGE_VERSION:+==${TF_PACKAGE_VERSION}}
 
-# CACHE_STOP is used to rerun future commands, otherwise downloading the .whl will be cached and will not pull the most recent version
-ARG CACHE_STOP=1
-RUN if [ ${TF_PACKAGE} = tensorflow-gpu ]; then \
-        BASE=https://powerci.osuosl.org/job/TensorFlow_PPC64LE_GPU_Release_Build/lastSuccessfulBuild/; \
-    elif [ ${TF_PACKAGE} = tf-nightly-gpu ]; then \
-        BASE=https://powerci.osuosl.org/job/TensorFlow_PPC64LE_GPU_Nightly_Artifact/lastSuccessfulBuild/; \
-    elif [ ${TF_PACKAGE} = tensorflow ]; then \
-        BASE=https://powerci.osuosl.org/job/TensorFlow_PPC64LE_CPU_Release_Build/lastSuccessfulBuild/; \
-    elif [ ${TF_PACKAGE} = tf-nightly ]; then \
-        BASE=https://powerci.osuosl.org/job/TensorFlow_PPC64LE_CPU_Nightly_Artifact/lastSuccessfulBuild/; \
-    fi; \
-    MAJOR=`${PYTHON} -c 'import sys; print(sys.version_info[0])'`; \
-    MINOR=`${PYTHON} -c 'import sys; print(sys.version_info[1])'`; \
-    PACKAGE=$(wget -qO- ${BASE}"api/xml?xpath=//fileName&wrapper=artifacts" | grep -o "[^<>]*cp${MAJOR}${MINOR}[^<>]*.whl"); \
-    wget ${BASE}"artifact/tensorflow_pkg/"${PACKAGE}; \
-    ${PIP} install ${PACKAGE}
+# install libnuma, openssh, wget
+RUN ( apt-get update && apt-get install -y --no-install-recommends --fix-missing \
+        libnuma-dev \
+        openssh-server \
+        openssh-client \
+        wget && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* ) || \
+    ( yum -y update && yum -y install \
+            numactl-devel \
+            openssh-server \
+            openssh-clients \
+            wget && \
+    yum clean all ) || \
+    ( echo "Unsupported Linux distribution. Aborting!" && exit 1 )
+
+# Install Open MPI
+# download realese version from official website as openmpi github master is not always stable
+ARG OPENMPI_VERSION=openmpi-4.0.0
+ARG OPENMPI_DOWNLOAD_URL=https://www.open-mpi.org/software/ompi/v4.0/downloads/openmpi-4.0.0.tar.gz
+RUN mkdir /tmp/openmpi && \
+    cd /tmp/openmpi && \
+    wget ${OPENMPI_DOWNLOAD_URL} && \
+    tar zxf ${OPENMPI_VERSION}.tar.gz && \
+    cd ${OPENMPI_VERSION} && \
+    ./configure --enable-orterun-prefix-by-default && \
+    make -j $(nproc) all && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/openmpi
+
+# Create a wrapper for OpenMPI to allow running as root by default
+RUN mv /usr/local/bin/mpirun /usr/local/bin/mpirun.real && \
+    echo '#!/bin/bash' > /usr/local/bin/mpirun && \
+    echo 'mpirun.real --allow-run-as-root "$@"' >> /usr/local/bin/mpirun && \
+    chmod a+x /usr/local/bin/mpirun
+
+# Configure OpenMPI to run good defaults:
+RUN echo "btl_tcp_if_exclude = lo,docker0" >> /usr/local/etc/openmpi-mca-params.conf
+
+# Install OpenSSH for MPI to communicate between containers
+RUN mkdir -p /var/run/sshd
+
+# Allow OpenSSH to talk to containers without asking for confirmation
+RUN cat /etc/ssh/ssh_config | grep -v StrictHostKeyChecking > /etc/ssh/ssh_config.new && \
+    echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config.new && \
+    mv /etc/ssh/ssh_config.new /etc/ssh/ssh_config
+
+# Install Horovod
+ARG HOROVOD_VERSION=0.16.4
+RUN ${PIP} install --no-cache-dir horovod==${HOROVOD_VERSION}
 
 COPY bashrc /etc/bash.bashrc
 RUN chmod a+rwx /etc/bash.bashrc

@@ -78,6 +78,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    wget \
     openjdk-8-jdk \
     ${PYTHON}-dev \
     virtualenv \
@@ -93,21 +94,71 @@ RUN ${PIP} --no-cache-dir install \
     scipy \
     sklearn \
     pandas \
+    future \
     portpicker \
     && test "${USE_PYTHON_3_NOT_2}" -eq 1 && true || ${PIP} --no-cache-dir install \
     enum34
 
- # Build and install bazel
-ENV BAZEL_VERSION 0.15.0
-WORKDIR /
+# Install bazel
+ARG BAZEL_VERSION=1.2.1
 RUN mkdir /bazel && \
-    cd /bazel && \
-    curl -fSsL -O https://github.com/bazelbuild/bazel/releases/download/$BAZEL_VERSION/bazel-$BAZEL_VERSION-dist.zip && \
-    unzip bazel-$BAZEL_VERSION-dist.zip && \
-    bash ./compile.sh && \
-    cp output/bazel /usr/local/bin/ && \
-    rm -rf /bazel && \
-    cd -
+    wget -O /bazel/installer.sh "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-linux-x86_64.sh" && \
+    wget -O /bazel/LICENSE.txt "https://raw.githubusercontent.com/bazelbuild/bazel/master/LICENSE" && \
+    chmod +x /bazel/installer.sh && \
+    /bazel/installer.sh && \
+    rm -f /bazel/installer.sh
+
+# install libnuma, openssh, wget
+RUN ( apt-get update && apt-get install -y --no-install-recommends --fix-missing \
+        libnuma-dev \
+        openssh-server \
+        openssh-client \
+        wget && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* ) || \
+    ( yum -y update && yum -y install \
+            numactl-devel \
+            openssh-server \
+            openssh-clients \
+            wget && \
+    yum clean all ) || \
+    ( echo "Unsupported Linux distribution. Aborting!" && exit 1 )
+
+# Install Open MPI
+# download realese version from official website as openmpi github master is not always stable
+ARG OPENMPI_VERSION=openmpi-4.0.0
+ARG OPENMPI_DOWNLOAD_URL=https://www.open-mpi.org/software/ompi/v4.0/downloads/openmpi-4.0.0.tar.gz
+RUN mkdir /tmp/openmpi && \
+    cd /tmp/openmpi && \
+    wget ${OPENMPI_DOWNLOAD_URL} && \
+    tar zxf ${OPENMPI_VERSION}.tar.gz && \
+    cd ${OPENMPI_VERSION} && \
+    ./configure --enable-orterun-prefix-by-default && \
+    make -j $(nproc) all && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/openmpi
+
+# Create a wrapper for OpenMPI to allow running as root by default
+RUN mv /usr/local/bin/mpirun /usr/local/bin/mpirun.real && \
+    echo '#!/bin/bash' > /usr/local/bin/mpirun && \
+    echo 'mpirun.real --allow-run-as-root "$@"' >> /usr/local/bin/mpirun && \
+    chmod a+x /usr/local/bin/mpirun
+
+# Configure OpenMPI to run good defaults:
+RUN echo "btl_tcp_if_exclude = lo,docker0" >> /usr/local/etc/openmpi-mca-params.conf
+
+# Install OpenSSH for MPI to communicate between containers
+RUN mkdir -p /var/run/sshd
+
+# Allow OpenSSH to talk to containers without asking for confirmation
+RUN cat /etc/ssh/ssh_config | grep -v StrictHostKeyChecking > /etc/ssh/ssh_config.new && \
+    echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config.new && \
+    mv /etc/ssh/ssh_config.new /etc/ssh/ssh_config
+
+# Check out horovod source code if --build-arg CHECKOUT_HOROVOD_SRC=1
+ARG CHECKOUT_HOROVOD_SRC=0
+RUN test "${CHECKOUT_HOROVOD_SRC}" -eq 1 && git clone --recursive https://github.com/uber/horovod.git /horovod_src || true
 
 COPY bashrc /etc/bash.bashrc
 RUN chmod a+rwx /etc/bash.bashrc

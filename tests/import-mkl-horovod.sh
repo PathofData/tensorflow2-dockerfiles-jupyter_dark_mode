@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,4 +15,4 @@
 # limitations under the License.
 # ============================================================================
 
-python -c 'import tensorflow as tf; tf.test.is_gpu_available() or exit(1)'
+python -c 'from tensorflow.python import pywrap_tensorflow; pywrap_tensorflow.IsMklEnabled() or exit(1); import horovod.tensorflow as hvd'
