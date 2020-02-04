@@ -1,5 +1,5 @@
 RUN apt-get install -y graphviz
-RUN ${PIP} install jupyter matplotlib jupyterthemes pandas scikit-learn pydot
+RUN ${PIP} install jupyter matplotlib jupyterthemes pandas scikit-learn pydot lightgbm bayesian-optimization
 RUN ${PIP} install git+https://www.github.com/keras-team/keras-contrib.git
 RUN ${PIP} install jupyter_http_over_ws
 RUN jupyter serverextension enable --py jupyter_http_over_ws
@@ -21,6 +21,6 @@ EXPOSE 8888
 
 RUN ${PYTHON} -m ipykernel.kernelspec
 
-RUN jt -t onedork -fs 95 -tfs 11 -nfs 115 -cellw 88% -T
+RUN jt -t monokai -f roboto -fs 100 -tfs 11 -nfs 115 -cellw 100% -T
 
 CMD ["bash", "-c", "source /etc/bash.bashrc && jupyter notebook --notebook-dir=/tf --ip 0.0.0.0 --no-browser --allow-root"]
